@@ -35,32 +35,31 @@ import {
 const router = Router();
 
 router.use(verifyJWT, requireUser);
-router.get("/vendors", listVendors);
-router.get("/vendors/:id", getVendorWithItems);
-router.get("/items", browseItems);
+router.route("/vendors").get(listVendors);
+router.route("/vendors/:id").get(getVendorWithItems);
+router.route("/items").get(browseItems);
 
-router.get("/cart", getCart);
-router.post("/cart", validate(addToCartSchema), addToCart);
-router.patch("/cart/:lineId", validate(updateCartSchema), updateCartItem);
-router.delete("/cart/:lineId", removeCartItem);
-router.delete("/cart", clearCart);
+router.route("/cart").get(getCart);
+router.route("/cart").post(validate(addToCartSchema), addToCart);
+router.route("/cart/:lineId").patch(validate(updateCartSchema), updateCartItem);
+router.route("/cart/:lineId").delete(removeCartItem);
+router.route("/cart").delete(clearCart);
 
-router.post("/checkout", validate(checkoutSchema), checkout);
-router.get("/orders", listMyOrders);
-router.get("/orders/:id", getMyOrder);
-router.post("/orders/:id/cancel", validate(cancelOrderSchema), cancelMyOrder);
+router.route("/checkout").post(validate(checkoutSchema), checkout);
+router.route("/orders").get(listMyOrders);
+router.route("/orders/:id").get(getMyOrder);
+router.route("/orders/:id/cancel").post(validate(cancelOrderSchema), cancelMyOrder);
 
-router.get("/guest-lists", listGuestLists);
-router.post("/guest-lists", validate(createGuestListSchema), createGuestList);
-router.get("/guest-lists/:id", getGuestList);
-router.patch(
-    "/guest-lists/:id",
+router.route("/guest-lists").get(listGuestLists);
+router.route("/guest-lists").post(validate(createGuestListSchema), createGuestList);
+router.route("/guest-lists/:id").get(getGuestList);
+router.route("/guest-lists/:id").patch(
     validate(updateGuestListSchema),
     updateGuestList,
 );
-router.delete("/guest-lists/:id", deleteGuestList);
+router.route("/guest-lists/:id").delete(deleteGuestList);
 
-router.post("/requests", validate(createItemRequestSchema), createItemRequest);
-router.get("/requests", listMyRequests);
+router.route("/requests").post(validate(createItemRequestSchema), createItemRequest);
+router.route("/requests").get(listMyRequests);
 
 export default router;

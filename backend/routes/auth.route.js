@@ -34,55 +34,48 @@ import { updateProfileSchema } from "../validators/common.validator.js";
 
 const router = Router();
 
-router.post(
-    "/signup/user",
+router.route("/signup/user").post(
     authLimiter,
     validate(userSignupSchema),
     signupUser,
 );
-router.post(
-    "/signup/admin",
+router.route("/signup/admin").post(
     authLimiter,
     validate(adminSignupSchema),
     signupAdmin,
 );
-router.post(
-    "/signup/vendor",
+router.route("/signup/vendor").post(
     authLimiter,
     validate(vendorSignupSchema),
     signupVendor,
 );
 
-router.post("/login", authLimiter, validate(loginSchema), login);
-router.post("/logout", verifyJWT, logout);
-router.post("/refresh", refreshAccessToken);
+router.route("/login").post(authLimiter, validate(loginSchema), login);
+router.route("/logout").post(verifyJWT, logout);
+router.route("/refresh").post(refreshAccessToken);
 
-router.post("/verify-email", validate(verifyEmailSchema), verifyEmail);
-router.post(
-    "/resend-verification",
+router.route("/verify-email").post(validate(verifyEmailSchema), verifyEmail);
+router.route("/resend-verification").post(
     authLimiter,
     validate(resendVerificationSchema),
     resendVerification,
 );
 
-router.post(
-    "/forgot-password",
+router.route("/forgot-password").post(
     authLimiter,
     validate(forgotPasswordSchema),
     forgotPassword,
 );
-router.post(
-    "/reset-password",
+router.route("/reset-password").post(
     authLimiter,
     validate(resetPasswordSchema),
     resetPassword,
 );
 
-router.get("/me", verifyJWT, me);
-router.patch("/me", verifyJWT, validate(updateProfileSchema), updateProfile);
-router.patch("/me/avatar", verifyJWT, upload.single("avatar"), updateAvatar);
-router.post(
-    "/change-password",
+router.route("/me").get(verifyJWT, me);
+router.route("/me").patch(verifyJWT, validate(updateProfileSchema), updateProfile);
+router.route("/me/avatar").patch(verifyJWT, upload.single("avatar"), updateAvatar);
+router.route("/change-password").post(
     verifyJWT,
     validate(changePasswordSchema),
     changePassword,

@@ -111,13 +111,29 @@ export default function Items() {
                             <p className="text-xs text-zinc-500 mt-0.5">
                                 By {it.vendor?.name}
                             </p>
-                            <div className="mt-3 flex items-center justify-between">
+                            <div className="mt-2 flex items-center gap-1.5">
+                                <span
+                                    className={`text-xs font-medium ${
+                                        it.stock === 0
+                                            ? "text-red-400"
+                                            : it.stock <= 5
+                                              ? "text-amber-400"
+                                              : "text-zinc-400"
+                                    }`}
+                                >
+                                    {it.stock === 0
+                                        ? "Out of stock"
+                                        : `${it.stock} in stock`}
+                                </span>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between">
                                 <span className="text-mint-300 font-semibold">
                                     {inr(it.price)}
                                 </span>
                                 <button
                                     onClick={() => addMut.mutate(it._id)}
-                                    className="btn-primary !px-3 !py-2 text-xs"
+                                    disabled={it.stock === 0}
+                                    className="btn-primary !px-3 !py-2 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
                                     <Plus className="w-3.5 h-3.5" /> Add
                                 </button>

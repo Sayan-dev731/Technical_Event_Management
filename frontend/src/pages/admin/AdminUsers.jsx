@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Plus, Search, Trash2, Edit, Users } from "lucide-react";
+import { Plus, Search, Trash2, Edit, Users, Copy, Check } from "lucide-react";
 import { api, apiMessage } from "../../api/axios.js";
 import { CardSkeleton } from "../../components/Loader.jsx";
 import { Empty } from "../../components/Empty.jsx";
@@ -141,6 +141,9 @@ export default function AdminUsers() {
                                         </span>
                                     </td>
                                     <td className="p-3 text-right whitespace-nowrap">
+                                        {u.role === "vendor" && (
+                                            <CopyIdButton id={u._id} />
+                                        )}
                                         <button
                                             onClick={() => setEditing(u)}
                                             className="btn-ghost !px-2.5 !py-2 mr-1"
@@ -168,6 +171,28 @@ export default function AdminUsers() {
                 <EditModal user={editing} onClose={() => setEditing(null)} />
             )}
         </div>
+    );
+}
+
+function CopyIdButton({ id }) {
+    const [copied, setCopied] = useState(false);
+    const copy = () => {
+        navigator.clipboard.writeText(id);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+    };
+    return (
+        <button
+            onClick={copy}
+            className="btn-ghost !px-2.5 !py-2 mr-1"
+            title={copied ? "Copied!" : "Copy vendor ID"}
+        >
+            {copied ? (
+                <Check className="w-4 h-4 text-mint-400" />
+            ) : (
+                <Copy className="w-4 h-4" />
+            )}
+        </button>
     );
 }
 

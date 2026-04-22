@@ -26,34 +26,30 @@ import {
 const router = Router();
 
 router.use(verifyJWT, requireVendor);
-router.get("/items", listMyItems);
-router.post(
-    "/items",
+router.route("/items").get(listMyItems);
+router.route("/items").post(
     upload.single("image"),
     validate(createItemSchema),
     createItem,
 );
-router.get("/items/:id", getMyItem);
-router.patch(
-    "/items/:id",
+router.route("/items/:id").get(getMyItem);
+router.route("/items/:id").patch(
     upload.single("image"),
     validate(updateItemSchema),
     updateItem,
 );
-router.delete("/items/:id", deleteItem);
-router.get("/requests", listIncomingRequests);
-router.patch(
-    "/requests/:id",
+router.route("/items/:id").delete(deleteItem);
+router.route("/requests").get(listIncomingRequests);
+router.route("/requests/:id").patch(
     validate(respondItemRequestSchema),
     respondToRequest,
 );
-router.get("/orders", listVendorOrders);
-router.get("/orders/:id", getVendorOrder);
-router.patch(
-    "/orders/:id",
+router.route("/orders").get(listVendorOrders);
+router.route("/orders/:id").get(getVendorOrder);
+router.route("/orders/:id").patch(
     validate(updateOrderStatusSchema),
     updateVendorOrderStatus,
 );
-router.delete("/orders/:id", validate(cancelOrderSchema), deleteVendorOrder);
+router.route("/orders/:id").delete(validate(cancelOrderSchema), deleteVendorOrder);
 
 export default router;

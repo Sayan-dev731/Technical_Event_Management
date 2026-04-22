@@ -24,19 +24,18 @@ const router = Router();
 
 router.use(verifyJWT, requireAdmin);
 
-router.get("/dashboard", dashboardStats);
-router.get("/memberships", listMemberships);
-router.post("/memberships", validate(createMembershipSchema), addMembership);
-router.patch(
-    "/memberships",
+router.route("/dashboard").get(dashboardStats);
+router.route("/memberships").get(listMemberships);
+router.route("/memberships").post(validate(createMembershipSchema), addMembership);
+router.route("/memberships").patch(
     validate(updateMembershipSchema),
     updateMembership,
 );
-router.get("/memberships/:number", getMembershipByNumber);
-router.get("/users", listUsers);
-router.post("/users", validate(adminCreateUserSchema), createUserOrVendor);
-router.get("/users/:id", getUserById);
-router.patch("/users/:id", validate(adminUpdateUserSchema), updateUserOrVendor);
-router.delete("/users/:id", deleteUserOrVendor);
+router.route("/memberships/:number").get(getMembershipByNumber);
+router.route("/users").get(listUsers);
+router.route("/users").post(validate(adminCreateUserSchema), createUserOrVendor);
+router.route("/users/:id").get(getUserById);
+router.route("/users/:id").patch(validate(adminUpdateUserSchema), updateUserOrVendor);
+router.route("/users/:id").delete(deleteUserOrVendor);
 
 export default router;

@@ -7,7 +7,12 @@ import { Cart } from "../models/Cart.model.js";
 import { Order } from "../models/Order.model.js";
 import { GuestList } from "../models/GuestList.model.js";
 import { ItemRequest } from "../models/ItemRequest.model.js";
-import { ROLES, ORDER_STATUS, PAYMENT_STATUS } from "../constants.js";
+import {
+    ROLES,
+    ORDER_STATUS,
+    PAYMENT_STATUS,
+    ITEM_STATUS,
+} from "../constants.js";
 import { sendOrderConfirmationEmail } from "../utils/mails.js";
 
 export const listVendors = asyncHandler(async (req, res) => {
@@ -98,8 +103,12 @@ export const addToCart = asyncHandler(async (req, res) => {
     }
     const cart = await getOrCreateCart(req.user._id);
     const existing = cart.items.find((i) => i.item.toString() === itemId);
+    const newQty = (existing?.quantity || 0) + quantity;
+    if (item.stock > 0 && newQty > item.stock) {
+        throw new ApiError(400, `Only ${item.stock} unit(s) in stock`);
+    }
     if (existing) {
-        existing.quantity += quantity;
+        existing.quantity = newQty;
     } else {
         cart.items.push({
             item: item._id,
@@ -159,6 +168,12 @@ export const checkout = asyncHandler(async (req, res) => {
         if (it.status !== "available") {
             throw new ApiError(400, `Item "${it.name}" is no longer available`);
         }
+        if (it.stock > 0 && line.quantity > it.stock) {
+            throw new ApiError(
+                400,
+                `Insufficient stock for "${it.name}" — only ${it.stock} left`,
+            );
+        }
         return {
             item: it._id,
             vendor: it.vendor,
@@ -193,6 +208,35 @@ export const checkout = asyncHandler(async (req, res) => {
         paymentStatus,
         status: ORDER_STATUS.CONFIRMED,
     });
+
+    // Decrement stock for every ordered item and auto-mark out_of_stock at 0.
+    // Uses an aggregation pipeline update so both stages run atomically per doc.
+    const bulkOps = orderItems.map((line) => ({
+        updateOne: {
+            filter: { _id: line.item },
+            update: [
+                {
+                    $set: {
+                        stock: {
+                            $max: [0, { $subtract: ["$stock", line.quantity] }],
+                        },
+                    },
+                },
+                {
+                    $set: {
+                        status: {
+                            $cond: [
+                                { $lte: ["$stock", 0] },
+                                ITEM_STATUS.OUT_OF_STOCK,
+                                "$status",
+                            ],
+                        },
+                    },
+                },
+            ],
+        },
+    }));
+    await Item.bulkWrite(bulkOps);
 
     cart.items = [];
     await cart.save();

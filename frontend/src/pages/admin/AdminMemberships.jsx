@@ -1,7 +1,14 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { Plus, BadgeCheck, RefreshCw, X } from "lucide-react";
+import {
+    Plus,
+    BadgeCheck,
+    RefreshCw,
+    X,
+    Search,
+    ChevronDown,
+} from "lucide-react";
 import { api, apiMessage } from "../../api/axios.js";
 import { CardSkeleton } from "../../components/Loader.jsx";
 import { Empty } from "../../components/Empty.jsx";
@@ -184,10 +191,108 @@ export default function AdminMemberships() {
     );
 }
 
+function VendorPicker({ value, onSelect }) {
+    const [q, setQ] = useState("");
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+
+    const { data, isFetching } = useQuery({
+        queryKey: ["vendorSearch", q],
+        queryFn: () =>
+            api
+                .get("/admin/users", {
+                    params: { role: "vendor", q: q || undefined, limit: 10 },
+                })
+                .then((r) => r.data.data?.data || []),
+        enabled: open,
+        staleTime: 30_000,
+    });
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handler = (e) => {
+            if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    return (
+        <div ref={ref} className="relative">
+            <button
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                className="input w-full flex items-center justify-between gap-2 text-left"
+            >
+                {value ? (
+                    <span className="truncate">
+                        <span className="font-medium">{value.name}</span>
+                        <span className="text-zinc-500 ml-2 text-xs">
+                            {value.email}
+                        </span>
+                    </span>
+                ) : (
+                    <span className="text-zinc-500">Search vendor…</span>
+                )}
+                <ChevronDown className="w-4 h-4 text-zinc-400 shrink-0" />
+            </button>
+
+            {open && (
+                <div className="absolute z-10 mt-1 w-full bg-ink-900 border border-white/10 rounded-xl shadow-xl overflow-hidden">
+                    <div className="p-2 border-b border-white/10">
+                        <div className="relative">
+                            <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+                            <input
+                                autoFocus
+                                className="input pl-8 text-sm"
+                                placeholder="Type name or email…"
+                                value={q}
+                                onChange={(e) => setQ(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <ul className="max-h-52 overflow-y-auto divide-y divide-white/5">
+                        {isFetching && (
+                            <li className="px-3 py-2 text-xs text-zinc-500">
+                                Searching…
+                            </li>
+                        )}
+                        {!isFetching && (!data || data.length === 0) && (
+                            <li className="px-3 py-2 text-xs text-zinc-500">
+                                No vendors found
+                            </li>
+                        )}
+                        {data?.map((v) => (
+                            <li key={v._id}>
+                                <button
+                                    type="button"
+                                    className="w-full text-left px-3 py-2 hover:bg-white/5 transition text-sm"
+                                    onClick={() => {
+                                        onSelect(v);
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <p className="font-medium">{v.name}</p>
+                                    <p className="text-xs text-zinc-500">
+                                        {v.email}{" "}
+                                        <span className="font-mono text-zinc-600">
+                                            {v._id}
+                                        </span>
+                                    </p>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function NewModal({ onClose }) {
     const qc = useQueryClient();
+    const [selectedVendor, setSelectedVendor] = useState(null);
     const [form, setForm] = useState({
-        vendorId: "",
         plan: "6_months",
         amountPaid: 0,
     });
@@ -195,9 +300,14 @@ function NewModal({ onClose }) {
 
     const submit = async (e) => {
         e.preventDefault();
+        if (!selectedVendor) {
+            toast.error("Please select a vendor");
+            return;
+        }
         setBusy(true);
         try {
             await api.post("/admin/memberships", {
+                vendorId: selectedVendor._id,
                 ...form,
                 amountPaid: Number(form.amountPaid) || 0,
             });
@@ -223,18 +333,16 @@ function NewModal({ onClose }) {
             >
                 <h3 className="font-display text-lg">New membership</h3>
                 <div>
-                    <label className="label">Vendor ID</label>
-                    <input
-                        required
-                        className="input font-mono text-sm"
-                        value={form.vendorId}
-                        onChange={(e) =>
-                            setForm({ ...form, vendorId: e.target.value })
-                        }
+                    <label className="label">Vendor</label>
+                    <VendorPicker
+                        value={selectedVendor}
+                        onSelect={setSelectedVendor}
                     />
-                    <p className="text-[11px] text-zinc-500 mt-1">
-                        Tip: copy from Users → Vendor row.
-                    </p>
+                    {selectedVendor && (
+                        <p className="text-[11px] text-zinc-500 mt-1 font-mono">
+                            ID: {selectedVendor._id}
+                        </p>
+                    )}
                 </div>
                 <div>
                     <label className="label">Plan</label>
