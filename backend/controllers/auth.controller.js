@@ -11,6 +11,10 @@ import {
     sendVerificationEmail,
     sendPasswordResetEmail,
 } from "../utils/mails.js";
+import {
+    uploadOnCloudinary,
+    deleteFromCloudinary,
+} from "../utils/cloudinary.js";
 import { User } from "../models/User.model.js";
 import { Membership } from "../models/Membership.model.js";
 import {
@@ -87,15 +91,13 @@ export const signupAdmin = asyncHandler(async (req, res) => {
         email,
         password,
         role: ROLES.ADMIN,
-        isVerified: true, 
+        isVerified: true,
     });
-    return res
-        .status(201)
-        .json(
-            new ApiResponse(201, "Admin registered", {
-                user: user.toSafeJSON(),
-            }),
-        );
+    return res.status(201).json(
+        new ApiResponse(201, "Admin registered", {
+            user: user.toSafeJSON(),
+        }),
+    );
 });
 
 export const signupVendor = asyncHandler(async (req, res) => {
@@ -292,4 +294,41 @@ export const changePassword = asyncHandler(async (req, res) => {
     user.refreshToken = undefined;
     await user.save();
     return res.status(200).json(new ApiResponse(200, "Password changed"));
+});
+
+export const updateProfile = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user._id);
+    if (!user) throw new ApiError(404, "User not found");
+
+    const { name, phone, contactInfo, category } = req.body;
+    if (name !== undefined) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (contactInfo !== undefined) user.contactInfo = contactInfo;
+    if (category !== undefined && user.role === ROLES.VENDOR) {
+        user.category = category;
+    }
+    await user.save();
+    return res
+        .status(200)
+        .json(new ApiResponse(200, "Profile updated", user.toSafeJSON()));
+});
+
+export const updateAvatar = asyncHandler(async (req, res) => {
+    if (!req.file?.path) throw new ApiError(400, "Avatar file required");
+    const user = await User.findById(req.user._id);
+    if (!user) throw new ApiError(404, "User not found");
+
+    const up = await uploadOnCloudinary(req.file.path, "event-mgmt/avatars");
+    if (!up) throw new ApiError(500, "Avatar upload failed");
+
+    if (user.avatarPublicId) {
+        await deleteFromCloudinary(user.avatarPublicId);
+    }
+    user.avatar = up.secure_url;
+    user.avatarPublicId = up.public_id;
+    await user.save({ validateBeforeSave: false });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, "Avatar updated", user.toSafeJSON()));
 });

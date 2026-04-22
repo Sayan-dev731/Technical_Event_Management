@@ -12,6 +12,19 @@ const orderItemSchema = new Schema(
     { _id: false },
 );
 
+const shippingAddressSchema = new Schema(
+    {
+        name: { type: String, required: true, trim: true },
+        phone: { type: String, required: true, trim: true },
+        email: { type: String, required: true, lowercase: true, trim: true },
+        address: { type: String, required: true, trim: true },
+        city: { type: String, required: true, trim: true },
+        state: { type: String, required: true, trim: true },
+        pinCode: { type: String, required: true, trim: true },
+    },
+    { _id: false },
+);
+
 const orderSchema = new Schema(
     {
         user: {
@@ -27,6 +40,8 @@ const orderSchema = new Schema(
         },
         totalAmount: { type: Number, required: true, min: 0 },
 
+        shippingAddress: { type: shippingAddressSchema, required: true },
+
         status: {
             type: String,
             enum: Object.values(ORDER_STATUS),
@@ -40,8 +55,8 @@ const orderSchema = new Schema(
         },
         paymentMethod: {
             type: String,
-            enum: ["card", "upi", "netbanking", "cod"],
-            default: "card",
+            enum: ["cash", "upi", "card", "netbanking", "cod"],
+            default: "cash",
         },
         paymentRef: { type: String, default: "" },
         cancelledAt: { type: Date },

@@ -9,6 +9,57 @@ import { ROLES, MEMBERSHIP_STATUS, MEMBERSHIP_PLANS } from "../constants.js";
 import { sendMembershipEmail } from "../utils/mails.js";
 import crypto from "crypto";
 
+export const createUserOrVendor = asyncHandler(async (req, res) => {
+    const { name, email, password, role, category, plan, phone, contactInfo } =
+        req.body;
+    if (await User.findOne({ email })) {
+        throw new ApiError(409, "Email already registered");
+    }
+    const user = await User.create({
+        name,
+        email,
+        password,
+        role,
+        category,
+        phone,
+        contactInfo,
+        isVerified: true,
+    });
+
+    let membership = null;
+    if (role === ROLES.VENDOR) {
+        const start = new Date();
+        const end = Membership.computeEndDate(
+            start,
+            plan || MEMBERSHIP_PLANS.SIX_MONTHS,
+        );
+        membership = await Membership.create({
+            vendor: user._id,
+            membershipNumber: `MEM-${Date.now()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`,
+            plan: plan || MEMBERSHIP_PLANS.SIX_MONTHS,
+            startDate: start,
+            endDate: end,
+            status: MEMBERSHIP_STATUS.ACTIVE,
+            history: [
+                {
+                    action: "created",
+                    plan: plan || MEMBERSHIP_PLANS.SIX_MONTHS,
+                    by: req.user._id,
+                },
+            ],
+        });
+        user.membership = membership._id;
+        await user.save({ validateBeforeSave: false });
+    }
+
+    return res.status(201).json(
+        new ApiResponse(201, "User created", {
+            user: user.toSafeJSON(),
+            membership,
+        }),
+    );
+});
+
 export const addMembership = asyncHandler(async (req, res) => {
     const { vendorId, plan, amountPaid } = req.body;
     const vendor = await User.findOne({ _id: vendorId, role: ROLES.VENDOR });
@@ -88,16 +139,14 @@ export const listMemberships = asyncHandler(async (req, res) => {
         Membership.countDocuments(filter),
     ]);
 
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, "Memberships", {
-                data,
-                total,
-                page: Number(page),
-                limit: Number(limit),
-            }),
-        );
+    return res.status(200).json(
+        new ApiResponse(200, "Memberships", {
+            data,
+            total,
+            page: Number(page),
+            limit: Number(limit),
+        }),
+    );
 });
 
 export const getMembershipByNumber = asyncHandler(async (req, res) => {
@@ -128,16 +177,14 @@ export const listUsers = asyncHandler(async (req, res) => {
             .limit(Number(limit)),
         User.countDocuments(filter),
     ]);
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, "Users", {
-                data,
-                total,
-                page: Number(page),
-                limit: Number(limit),
-            }),
-        );
+    return res.status(200).json(
+        new ApiResponse(200, "Users", {
+            data,
+            total,
+            page: Number(page),
+            limit: Number(limit),
+        }),
+    );
 });
 
 export const getUserById = asyncHandler(async (req, res) => {

@@ -12,10 +12,13 @@ import {
     resetPassword,
     me,
     changePassword,
+    updateProfile,
+    updateAvatar,
 } from "../controllers/auth.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import { authLimiter } from "../middlewares/rateLimit.middleware.js";
+import { upload } from "../middlewares/multer.middleware.js";
 import {
     adminSignupSchema,
     userSignupSchema,
@@ -27,6 +30,7 @@ import {
     resendVerificationSchema,
     changePasswordSchema,
 } from "../validators/auth.validator.js";
+import { updateProfileSchema } from "../validators/common.validator.js";
 
 const router = Router();
 
@@ -75,6 +79,8 @@ router.post(
 );
 
 router.get("/me", verifyJWT, me);
+router.patch("/me", verifyJWT, validate(updateProfileSchema), updateProfile);
+router.patch("/me/avatar", verifyJWT, upload.single("avatar"), updateAvatar);
 router.post(
     "/change-password",
     verifyJWT,

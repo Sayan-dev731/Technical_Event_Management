@@ -40,6 +40,9 @@ export const ITEM_STATUS = Object.freeze({
 export const ORDER_STATUS = Object.freeze({
     PENDING: "pending",
     CONFIRMED: "confirmed",
+    RECEIVED: "received",
+    READY_FOR_SHIPPING: "ready_for_shipping",
+    OUT_FOR_DELIVERY: "out_for_delivery",
     DELIVERED: "delivered",
     CANCELLED: "cancelled",
 });

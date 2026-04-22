@@ -18,22 +18,20 @@ export const listVendors = asyncHandler(async (req, res) => {
     const skip = (Number(page) - 1) * Number(limit);
     const [data, total] = await Promise.all([
         User.find(filter)
-            .select("name email category avatar")
+            .select("name email phone contactInfo category avatar")
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(Number(limit)),
         User.countDocuments(filter),
     ]);
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, "Vendors", {
-                data,
-                total,
-                page: Number(page),
-                limit: Number(limit),
-            }),
-        );
+    return res.status(200).json(
+        new ApiResponse(200, "Vendors", {
+            data,
+            total,
+            page: Number(page),
+            limit: Number(limit),
+        }),
+    );
 });
 
 export const getVendorWithItems = asyncHandler(async (req, res) => {
@@ -41,7 +39,7 @@ export const getVendorWithItems = asyncHandler(async (req, res) => {
         _id: req.params.id,
         role: ROLES.VENDOR,
         isActive: true,
-    }).select("name email category avatar");
+    }).select("name email phone contactInfo category avatar");
     if (!vendor) throw new ApiError(404, "Vendor not found");
     const items = await Item.find({
         vendor: vendor._id,
@@ -67,16 +65,14 @@ export const browseItems = asyncHandler(async (req, res) => {
             .limit(Number(limit)),
         Item.countDocuments(filter),
     ]);
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, "Items", {
-                data,
-                total,
-                page: Number(page),
-                limit: Number(limit),
-            }),
-        );
+    return res.status(200).json(
+        new ApiResponse(200, "Items", {
+            data,
+            total,
+            page: Number(page),
+            limit: Number(limit),
+        }),
+    );
 });
 
 const getOrCreateCart = async (userId) => {
@@ -146,7 +142,7 @@ export const clearCart = asyncHandler(async (req, res) => {
 });
 
 export const checkout = asyncHandler(async (req, res) => {
-    const { paymentMethod, paymentRef } = req.body;
+    const { paymentMethod, paymentRef, shippingAddress } = req.body;
     const cart = await Cart.findOne({ user: req.user._id });
     if (!cart || cart.items.length === 0) {
         throw new ApiError(400, "Cart is empty");
@@ -160,6 +156,9 @@ export const checkout = asyncHandler(async (req, res) => {
     const orderItems = cart.items.map((line) => {
         const it = map.get(line.item.toString());
         if (!it) throw new ApiError(400, "Some items no longer exist");
+        if (it.status !== "available") {
+            throw new ApiError(400, `Item "${it.name}" is no longer available`);
+        }
         return {
             item: it._id,
             vendor: it.vendor,
@@ -174,17 +173,24 @@ export const checkout = asyncHandler(async (req, res) => {
         0,
     );
 
+    // Dummy payment processing: cash/COD => pending, others => assume paid.
+    const paidStatuses = ["upi", "card", "netbanking"];
+    const paymentStatus = paidStatuses.includes(paymentMethod)
+        ? PAYMENT_STATUS.PAID
+        : PAYMENT_STATUS.PENDING;
+
     const order = await Order.create({
         user: req.user._id,
         items: orderItems,
         totalAmount,
+        shippingAddress,
         paymentMethod,
-        paymentRef,
-        // Mark COD as pending; everything else assume succeeded for demo flow
-        paymentStatus:
-            paymentMethod === "cod"
-                ? PAYMENT_STATUS.PENDING
-                : PAYMENT_STATUS.PAID,
+        paymentRef:
+            paymentRef ||
+            (paymentStatus === PAYMENT_STATUS.PAID
+                ? `DUMMY-${Date.now()}`
+                : ""),
+        paymentStatus,
         status: ORDER_STATUS.CONFIRMED,
     });
 
@@ -208,16 +214,14 @@ export const listMyOrders = asyncHandler(async (req, res) => {
             .limit(Number(limit)),
         Order.countDocuments(filter),
     ]);
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, "Orders", {
-                data,
-                total,
-                page: Number(page),
-                limit: Number(limit),
-            }),
-        );
+    return res.status(200).json(
+        new ApiResponse(200, "Orders", {
+            data,
+            total,
+            page: Number(page),
+            limit: Number(limit),
+        }),
+    );
 });
 
 export const getMyOrder = asyncHandler(async (req, res) => {

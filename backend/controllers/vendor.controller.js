@@ -9,7 +9,7 @@ import {
     uploadOnCloudinary,
     deleteFromCloudinary,
 } from "../utils/cloudinary.js";
-import { REQUEST_STATUS } from "../constants.js";
+import { REQUEST_STATUS, ORDER_STATUS, PAYMENT_STATUS } from "../constants.js";
 
 const requireActiveMembership = async (vendor) => {
     if (!vendor.membership) {
@@ -63,16 +63,14 @@ export const listMyItems = asyncHandler(async (req, res) => {
             .limit(Number(limit)),
         Item.countDocuments(filter),
     ]);
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, "My items", {
-                data,
-                total,
-                page: Number(page),
-                limit: Number(limit),
-            }),
-        );
+    return res.status(200).json(
+        new ApiResponse(200, "My items", {
+            data,
+            total,
+            page: Number(page),
+            limit: Number(limit),
+        }),
+    );
 });
 
 export const getMyItem = asyncHandler(async (req, res) => {
@@ -134,16 +132,14 @@ export const listIncomingRequests = asyncHandler(async (req, res) => {
             .limit(Number(limit)),
         ItemRequest.countDocuments(filter),
     ]);
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, "Incoming requests", {
-                data,
-                total,
-                page: Number(page),
-                limit: Number(limit),
-            }),
-        );
+    return res.status(200).json(
+        new ApiResponse(200, "Incoming requests", {
+            data,
+            total,
+            page: Number(page),
+            limit: Number(limit),
+        }),
+    );
 });
 
 export const respondToRequest = asyncHandler(async (req, res) => {
@@ -178,14 +174,61 @@ export const listVendorOrders = asyncHandler(async (req, res) => {
             .limit(Number(limit)),
         Order.countDocuments(match),
     ]);
+    return res.status(200).json(
+        new ApiResponse(200, "Vendor orders", {
+            data,
+            total,
+            page: Number(page),
+            limit: Number(limit),
+        }),
+    );
+});
+
+export const getVendorOrder = asyncHandler(async (req, res) => {
+    const order = await Order.findOne({
+        _id: req.params.id,
+        "items.vendor": req.user._id,
+    }).populate("user", "name email");
+    if (!order) throw new ApiError(404, "Order not found");
+    return res.status(200).json(new ApiResponse(200, "Order", order));
+});
+
+export const updateVendorOrderStatus = asyncHandler(async (req, res) => {
+    const { status, paymentStatus } = req.body;
+    const order = await Order.findOne({
+        _id: req.params.id,
+        "items.vendor": req.user._id,
+    });
+    if (!order) throw new ApiError(404, "Order not found");
+    if (
+        [ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED].includes(order.status)
+    ) {
+        throw new ApiError(400, `Cannot update a ${order.status} order`);
+    }
+    if (status) order.status = status;
+    if (paymentStatus) order.paymentStatus = paymentStatus;
+    await order.save();
     return res
         .status(200)
-        .json(
-            new ApiResponse(200, "Vendor orders", {
-                data,
-                total,
-                page: Number(page),
-                limit: Number(limit),
-            }),
-        );
+        .json(new ApiResponse(200, "Order status updated", order));
+});
+
+export const deleteVendorOrder = asyncHandler(async (req, res) => {
+    // Vendors can only "cancel" (soft) orders that are still pending/confirmed.
+    const order = await Order.findOne({
+        _id: req.params.id,
+        "items.vendor": req.user._id,
+    });
+    if (!order) throw new ApiError(404, "Order not found");
+    if (order.status === ORDER_STATUS.DELIVERED) {
+        throw new ApiError(400, "Cannot delete a delivered order");
+    }
+    order.status = ORDER_STATUS.CANCELLED;
+    order.cancelledAt = new Date();
+    order.cancelReason = req.body?.reason || "Cancelled by vendor";
+    if (order.paymentStatus === PAYMENT_STATUS.PAID) {
+        order.paymentStatus = PAYMENT_STATUS.REFUNDED;
+    }
+    await order.save();
+    return res.status(200).json(new ApiResponse(200, "Order cancelled", order));
 });

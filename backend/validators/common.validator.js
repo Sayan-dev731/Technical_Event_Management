@@ -41,11 +41,30 @@ export const updateCartSchema = Joi.object({
     quantity: Joi.number().integer().min(1).required(),
 });
 
+export const shippingAddressSchema = Joi.object({
+    name: Joi.string().trim().min(1).max(100).required(),
+    phone: Joi.string()
+        .trim()
+        .pattern(/^[0-9+\-\s()]{7,20}$/)
+        .required()
+        .messages({ "string.pattern.base": "phone must be a valid number" }),
+    email: Joi.string().email().lowercase().trim().required(),
+    address: Joi.string().trim().min(1).max(300).required(),
+    city: Joi.string().trim().min(1).max(100).required(),
+    state: Joi.string().trim().min(1).max(100).required(),
+    pinCode: Joi.string()
+        .trim()
+        .pattern(/^[A-Za-z0-9\- ]{3,12}$/)
+        .required()
+        .messages({ "string.pattern.base": "pinCode is invalid" }),
+});
+
 export const checkoutSchema = Joi.object({
     paymentMethod: Joi.string()
-        .valid("card", "upi", "netbanking", "cod")
-        .default("card"),
+        .valid("cash", "upi", "card", "netbanking", "cod")
+        .default("cash"),
     paymentRef: Joi.string().allow(""),
+    shippingAddress: shippingAddressSchema.required(),
 });
 
 export const cancelOrderSchema = Joi.object({
@@ -114,4 +133,36 @@ export const adminUpdateUserSchema = Joi.object({
     isActive: Joi.boolean(),
     isVerified: Joi.boolean(),
     category: Joi.string().valid(...VENDOR_CATEGORIES),
+    phone: Joi.string().trim().allow("").max(20),
+    contactInfo: Joi.string().trim().allow("").max(500),
 }).min(1);
+
+export const updateProfileSchema = Joi.object({
+    name: Joi.string().trim().min(2).max(100),
+    phone: Joi.string().trim().allow("").max(20),
+    contactInfo: Joi.string().trim().allow("").max(500),
+    category: Joi.string().valid(...VENDOR_CATEGORIES),
+}).min(1);
+
+export const adminCreateUserSchema = Joi.object({
+    name: Joi.string().trim().min(2).max(100).required(),
+    email: Joi.string().email().lowercase().trim().required(),
+    password: Joi.string().min(6).max(128).required(),
+    role: Joi.string().valid("user", "vendor").required(),
+    category: Joi.when("role", {
+        is: "vendor",
+        then: Joi.string()
+            .valid(...VENDOR_CATEGORIES)
+            .required(),
+        otherwise: Joi.forbidden(),
+    }),
+    plan: Joi.when("role", {
+        is: "vendor",
+        then: Joi.string()
+            .valid(...Object.values(MEMBERSHIP_PLANS))
+            .default(MEMBERSHIP_PLANS.SIX_MONTHS),
+        otherwise: Joi.forbidden(),
+    }),
+    phone: Joi.string().trim().allow("").max(20),
+    contactInfo: Joi.string().trim().allow("").max(500),
+});

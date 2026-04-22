@@ -8,6 +8,9 @@ import {
     listIncomingRequests,
     respondToRequest,
     listVendorOrders,
+    getVendorOrder,
+    updateVendorOrderStatus,
+    deleteVendorOrder,
 } from "../controllers/vendor.controller.js";
 import { verifyJWT, requireVendor } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
@@ -16,6 +19,8 @@ import {
     createItemSchema,
     updateItemSchema,
     respondItemRequestSchema,
+    updateOrderStatusSchema,
+    cancelOrderSchema,
 } from "../validators/common.validator.js";
 
 const router = Router();
@@ -43,5 +48,12 @@ router.patch(
     respondToRequest,
 );
 router.get("/orders", listVendorOrders);
+router.get("/orders/:id", getVendorOrder);
+router.patch(
+    "/orders/:id",
+    validate(updateOrderStatusSchema),
+    updateVendorOrderStatus,
+);
+router.delete("/orders/:id", validate(cancelOrderSchema), deleteVendorOrder);
 
 export default router;

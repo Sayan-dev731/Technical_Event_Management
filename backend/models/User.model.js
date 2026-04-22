@@ -30,6 +30,8 @@ const userSchema = new Schema(
         membership: { type: Schema.Types.ObjectId, ref: "Membership" },
         avatar: { type: String, default: "" },
         avatarPublicId: { type: String, default: "" },
+        phone: { type: String, default: "", trim: true },
+        contactInfo: { type: String, default: "", trim: true, maxlength: 500 },
         isVerified: { type: Boolean, default: false },
         isActive: { type: Boolean, default: true },
         refreshToken: { type: String, select: false },
